@@ -1,0 +1,14 @@
+<svg width="480" height="80" viewBox="0 0 480 80" xmlns="http://www.w3.org/2000/svg">
+  <text
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-size="38"
+    font-weight="500"
+    fill="#185FA5"
+    text-anchor="middle"
+    dominant-baseline="central"
+    x="240"
+    y="34"
+    letter-spacing="5">ABDALKHANI</text>
+  <line x1="48" y1="58" x2="432" y2="58" stroke="#378ADD" stroke-width="2.5"/>
+  <line x1="48" y1="64" x2="432" y2="64" stroke="#B5D4F4" stroke-width="1"/>
+</svg>

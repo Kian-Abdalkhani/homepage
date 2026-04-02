@@ -8,9 +8,8 @@ export function About() {
         Welcome to the public <strong>Abdalkhani</strong> homepage!
       </p>
       <p>
-        This page serves as a general reference for individuals to use when
-        browsing the available tools and apps within the site. More apps will be
-        available soon.
+        This page serves as a general reference for apps within the site. More
+        apps will be available soon.
       </p>
       <p>
         <em>

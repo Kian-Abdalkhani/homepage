@@ -2,22 +2,23 @@ import "./About.css";
 
 export function About() {
   return (
-    <div className="about">
-      <h3>About Us</h3>
-      <p>
-        Welcome to the public <strong>Abdalkhani</strong> homepage!
+    <section className="about panel" id="about" aria-labelledby="about-title">
+      <p className="section-number" aria-hidden="true">
+        01
       </p>
-      <p>
-        This page serves as a general reference for apps within the site. More
-        apps will be available soon.
-      </p>
-      <p>
-        <em>
-          (Domain currently owned and managed by Kian Abdalkhani, for further
-          inquiries contact me at{" "}
-          <a href="mailto:kian@abdalkhani.com">kian@abdalkhani.com</a>)
-        </em>
-      </p>
-    </div>
+      <div>
+        <h2 id="about-title">About</h2>
+        <p>
+          This is the public homepage for the Abdalkhani domain—a central place
+          for independent apps and projects. New tools will be added as they
+          become available.
+        </p>
+        <p className="contact-copy">
+          The domain is owned and managed by Kian Abdalkhani. For questions or
+          inquiries, email{" "}
+          <a href="mailto:kian@abdalkhani.com">kian@abdalkhani.com</a>.
+        </p>
+      </div>
+    </section>
   );
 }

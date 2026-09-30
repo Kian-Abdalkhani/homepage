@@ -1,7 +1,53 @@
+.panel {
+  min-height: 340px;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(16, 26, 33, 0.82);
+}
+
 .about {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
   gap: 1rem;
-  padding: 1rem;
+}
+
+.section-number {
+  padding-top: 0.35rem;
+  color: var(--accent-bright);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.about h2,
+.link-list h2 {
+  margin-bottom: 1.5rem;
+  color: var(--text-strong);
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  letter-spacing: -0.03em;
+}
+
+.about p:not(.section-number) {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.about .contact-copy {
+  margin-top: 1.25rem;
+}
+
+.about a {
+  color: var(--accent-bright);
+}
+
+@media (max-width: 450px) {
+  .panel {
+    min-height: auto;
+    padding: 1.5rem;
+  }
+
+  .about {
+    grid-template-columns: 1fr;
+  }
 }

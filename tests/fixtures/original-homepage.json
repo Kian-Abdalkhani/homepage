@@ -1,0 +1,36 @@
+{
+  "title": "Homepage",
+  "text": "Homepage About Us Welcome to the public Abdalkhani homepage! This page serves as a general reference for apps within the site. More apps will be available soon. (Domain currently owned and managed by Kian Abdalkhani, for further inquiries contact me at kian@abdalkhani.com) List of apps within the domain: Investment Calculator",
+  "paragraphs": [
+    "Welcome to the public Abdalkhani homepage!",
+    "This page serves as a general reference for apps within the site. More apps will be available soon.",
+    "(Domain currently owned and managed by Kian Abdalkhani, for further inquiries contact me at kian@abdalkhani.com)"
+  ],
+  "links": [
+    {
+      "text": "kian@abdalkhani.com",
+      "href": "mailto:kian@abdalkhani.com",
+      "target": null
+    },
+    {
+      "text": "Investment Calculator",
+      "href": "https://inv-calc.abdalkhani.com",
+      "target": null
+    }
+  ],
+  "images": [
+    {
+      "src": "/icon.svg",
+      "alt": "Family Logo"
+    },
+    {
+      "src": "/abdalkhani.svg",
+      "alt": "Family Watermark"
+    }
+  ],
+  "favicon": "/icon.svg",
+  "assetHashes": {
+    "icon.svg": "904706881767519cbe15395fad2752b16eeac02023980374a916432d155463d6",
+    "abdalkhani.svg": "9190ddd2ef841b57f9d6874d0f235ec1a4b7f67b6df7a0562822b1bfaf1c78b1"
+  }
+}

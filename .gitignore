@@ -11,6 +11,14 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+artifacts/
+test-results/
+playwright-report/
+.playwright-mcp/
+# Synced from the installed design kit before development and production builds.
+src/assets/favicon.svg
 
 # Editor directories and files
 .vscode/*

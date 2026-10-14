@@ -1,11 +1,20 @@
-main {
-  margin-top: 1rem;
-  display: flex;
-  flex-direction: row;
+.homepage-main {
+  max-width: 75rem;
+  margin-inline: auto;
+  padding: var(--ak-space-8) var(--ak-space-6) var(--ak-space-12);
+}
+
+.appearance-preferences {
+  color: var(--ak-muted);
+  font-size: var(--ak-text-sm);
+}
+
+.appearance-preferences p {
+  margin: 0;
 }
 
 @media (max-width: 768px) {
-  main {
-    flex-direction: column;
+  .homepage-main {
+    padding: var(--ak-space-6) var(--ak-space-4) var(--ak-space-8);
   }
 }

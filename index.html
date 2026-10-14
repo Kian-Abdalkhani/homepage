@@ -1,10 +1,33 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="system">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Homepage</title>
+    <title>Abdalkhani | Public apps</title>
+    <link rel="canonical" href="https://www.abdalkhani.com/" />
+    <meta name="description" content="Find public apps on the Abdalkhani domain, including the Investment Calculator." />
+    <meta property="og:title" content="Abdalkhani | Public apps" />
+    <meta property="og:description" content="Find public apps on the Abdalkhani domain, including the Investment Calculator." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.abdalkhani.com/" />
+    <meta property="og:site_name" content="Abdalkhani" />
+    <meta property="og:image" content="https://www.abdalkhani.com/social-preview-7fa520955440.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Abdalkhani public apps, with the design kit's winged horse logo." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (() => {
+        let appearance = "system";
+        try {
+          const saved = localStorage.getItem("ak-appearance");
+          if (saved === "light" || saved === "dark") appearance = saved;
+        } catch {}
+        document.documentElement.dataset.theme = appearance;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

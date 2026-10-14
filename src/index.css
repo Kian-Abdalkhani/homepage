@@ -1,5 +1,42 @@
-* {
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
   margin: 0;
-  padding: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--ak-background);
+  color: var(--ak-foreground);
+  font-family: var(--ak-font-sans);
+  font-size: var(--ak-text-base);
+  line-height: var(--ak-leading-body);
+}
+
+.section-title {
+  margin: 0;
+  font-size: var(--ak-text-lg);
+  font-weight: 600;
+  line-height: var(--ak-leading-heading);
+}
+
+a {
+  color: var(--ak-accent);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--ak-accent-hover);
+}
+
+a:focus-visible {
+  outline: var(--ak-focus-width) solid var(--ak-focus);
+  outline-offset: var(--ak-focus-offset);
+  border-radius: var(--ak-radius-control);
+}
+
+@media (forced-colors: active) {
+  a {
+    color: LinkText;
+  }
 }

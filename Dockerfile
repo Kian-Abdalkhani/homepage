@@ -1,7 +1,11 @@
+# syntax=docker/dockerfile:1
+
 FROM node:24-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY package*.json .npmrc ./
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc,required=true \
+    --mount=type=secret,id=forgejo_token,env=FORGEJO_TOKEN \
+    npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 

@@ -1,10 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="system">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Homepage</title>
+    <script>
+      (() => {
+        let appearance = "system";
+        try {
+          const saved = localStorage.getItem("ak-appearance");
+          if (saved === "light" || saved === "dark") appearance = saved;
+        } catch {}
+        document.documentElement.dataset.theme = appearance;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,32 +1,35 @@
-.link-list {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-}
 .link-list ul {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-left: 1.5rem;
+  margin: 0;
+  padding-inline-start: var(--ak-space-5);
 }
 
-.link-list li a {
-  display: block;
-  padding: 1rem 1.5rem;
-  background-color: rgb(0, 0, 0);
-  border: 1px solid rgb(80, 78, 78);
-  border-radius: 6px;
-  color: #378add;
+.link-list li::marker {
+  color: var(--ak-muted);
+}
+
+.app-link {
+  display: flex;
+  align-items: center;
+  min-height: var(--ak-control-height);
+  padding: var(--ak-space-3) var(--ak-space-4);
+  background: var(--ak-raised);
+  border: 1px solid var(--ak-control-border);
+  border-radius: var(--ak-radius-control);
   text-decoration: none;
   font-weight: 500;
-  transition:
-    background-color 0.2s,
-    border-color 0.2s;
+  overflow-wrap: anywhere;
 }
 
-.link-list li a:hover {
-  background-color: rgb(126, 216, 217);
-  border-color: #378add;
+.app-link:hover {
+  background: var(--ak-hover);
+}
+
+.app-link:active {
+  background: var(--ak-pressed);
+}
+
+@media (forced-colors: active) {
+  .app-link {
+    border-color: LinkText;
+  }
 }

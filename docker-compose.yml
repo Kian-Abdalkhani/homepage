@@ -1,14 +1,7 @@
 services:
   app:
+    image: ${HOMEPAGE_IMAGE:-forgejo.abdalkhani.com/abdalkhani-homelab/homepage:latest}
     container_name: homepage
-    build:
-      context: .
-      secrets:
-        - npmrc
     ports:
       - "8080:80"
     restart: unless-stopped
-
-secrets:
-  npmrc:
-    file: ${HOMEPAGE_NPMRC:-${HOME}/.npmrc}

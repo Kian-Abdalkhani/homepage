@@ -129,30 +129,89 @@ Node.js 24, pinned official actions, and saves browser reports/screenshots for
 seven days. Fork pull requests do not receive the private-package credential and
 are skipped; run their checks locally before accepting changes.
 
-Add a repository Actions secret named `FORGEJO_PACKAGES_TOKEN`, containing a
-Forgejo token with read access to the `abdalkhani-homelab` packages. The token is
-available only to the dependency-install step. Without this secret, the workflow
-fails with a clear setup message. It checks the page but does not deploy it.
+After checks pass on `main`, the image job builds and publishes to
+`forgejo.abdalkhani.com/abdalkhani-homelab/homepage`. Pushes to `main` and manual
+runs on `main` publish images; pull requests and manual runs on other branches
+only run the checks. Images include `linux/amd64` and `linux/arm64` variants,
+tagged `latest` and `sha-<full-commit-sha>`. The job summary records the image
+digest for reproducible deployment and rollback. Publishing an image does not
+restart or change the LXC.
 
-## Docker
+Configure these repository Actions settings before enabling the first publish:
 
-Compose supplies your user-level `~/.npmrc` as a BuildKit secret only during
-dependency installation. It should contain a resolved authentication token for
-this file-based Compose build. The runtime image contains the static build and
-Nginx configuration; it needs no Forgejo access.
+| Setting | Type | Required access |
+| --- | --- | --- |
+| `FORGEJO_PACKAGES_TOKEN` | Secret | Read the private `abdalkhani-homelab` npm packages |
+| `FORGEJO_REGISTRY_TOKEN` | Secret | Push container images under `abdalkhani-homelab` |
+| `FORGEJO_USERNAME` | Variable | Forgejo account associated with the registry token |
+
+The registry account needs write access to the package owner. Package visibility
+follows the owner/organization's access settings; retain the intended private
+access on `abdalkhani-homelab`. Both the npm endpoint and container registry must
+be reachable from the GitHub-hosted runner. Missing settings fail with a clear
+setup message. See [Forgejo package access](https://forgejo.org/docs/latest/user/packages/#access-restrictions).
+
+The image job creates an npm configuration in the runner's temporary directory,
+outside the Docker build context. This file contains only a `${FORGEJO_TOKEN}`
+placeholder; the package token is supplied separately as the `forgejo_token`
+BuildKit secret. Both are available only during `npm ci`, and the temporary file
+is removed after the job. The registry token is used only for publishing. The
+tracked `.npmrc` remains scope routing only.
+
+## Deploy the published image
+
+The default `docker-compose.yml` pulls the CI image. Wait for the first successful
+publish on `main` before switching an existing LXC to this configuration. For a
+private image, log in to Forgejo using an account/token with pull access:
 
 ```sh
-docker compose build --print | docker buildx bake --file - \
-  --allow="fs.read=${HOMEPAGE_NPMRC:-$HOME/.npmrc}" --load
+docker login forgejo.abdalkhani.com
+docker compose pull
 docker compose up -d
 ```
 
-The existing container name, port mapping (`8080:80`), and restart policy remain
-the same. To select a different credentials file outside the repository:
+Run these commands from the repository directory on the LXC after updating its
+checkout. The container name (`homepage`), port mapping (`8080:80`), and restart
+policy are preserved. Deployment requires Docker and registry pull access;
+it does not install npm dependencies or need an npm credentials file.
+
+To pin a deployment or roll back, set `HOMEPAGE_IMAGE` in the LXC's environment
+or its ignored `.env` file to a previously published tag or digest:
+
+```ini
+HOMEPAGE_IMAGE=forgejo.abdalkhani.com/abdalkhani-homelab/homepage@sha256:<published-digest>
+```
+
+Use the complete digest from the CI job summary in place of the placeholder,
+then run `docker compose pull` and `docker compose up -d`. Record the current
+digest before upgrading if you want an explicit rollback target.
+
+## Build an image locally
+
+`docker-compose.build.yml` is a separate, standalone configuration for local
+builds. Use it instead of the deployment Compose file. It tags the result as
+`abdalkhani-homepage:local`, preserving access to a local build without replacing
+the published image tag.
+
+This build supplies your user-level `~/.npmrc` as a BuildKit secret during
+dependency installation. For this file-based Compose build, that config should
+contain a resolved authentication token. The runtime image contains only the
+compiled site and Nginx configuration. Node runs on the builder's native platform;
+the final Nginx image uses the requested deployment platform.
+
+```sh
+docker compose -f docker-compose.build.yml build --print | \
+  docker buildx bake --file - \
+  --allow="fs.read=${HOMEPAGE_NPMRC:-$HOME/.npmrc}" --load
+docker compose -f docker-compose.build.yml up -d
+```
+
+To select a different credentials file outside the repository:
 
 ```sh
 export HOMEPAGE_NPMRC=/absolute/path/to/npm-config
-docker compose build --print | docker buildx bake --file - \
+docker compose -f docker-compose.build.yml build --print | \
+  docker buildx bake --file - \
   --allow="fs.read=$HOMEPAGE_NPMRC" --load
 ```
 
@@ -167,8 +226,8 @@ docker build \
 ```
 
 The Bake command grants access to that exact external npm config file. On Compose
-versions without Bake's filesystem entitlement check, `docker compose build`
-also works.
+versions without Bake's filesystem entitlement check,
+`docker compose -f docker-compose.build.yml build` also works.
 
 The project `.npmrc` contains scope routing only. Keep credential-bearing configs
 outside the build context. Use secret mounts rather than Docker build arguments

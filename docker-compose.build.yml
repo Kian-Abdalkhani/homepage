@@ -1,0 +1,15 @@
+services:
+  app:
+    image: abdalkhani-homepage:local
+    container_name: homepage
+    build:
+      context: .
+      secrets:
+        - npmrc
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+secrets:
+  npmrc:
+    file: ${HOMEPAGE_NPMRC:-${HOME}/.npmrc}

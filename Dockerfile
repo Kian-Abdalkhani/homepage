@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-alpine AS builder
+# The compiled site is static, so Node can run on the builder's native platform.
+FROM --platform=$BUILDPLATFORM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json .npmrc ./
 RUN --mount=type=secret,id=npmrc,target=/root/.npmrc,required=true \

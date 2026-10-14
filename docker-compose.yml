@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${HOMEPAGE_IMAGE:-forgejo.abdalkhani.com/abdalkhani-homelab/homepage:latest}
+    image: ${HOMEPAGE_IMAGE:-ghcr.io/kian-abdalkhani/homepage:latest}
     container_name: homepage
     ports:
       - "8080:80"

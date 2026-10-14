@@ -125,12 +125,14 @@ in `index.html` if the public hostname changes.
 
 `.github/workflows/checks.yml` runs lint, the production build, and the Chromium/
 WebKit suite on pushes to `main` and pull requests from this repository. It uses
-Node.js 24, pinned official actions, and saves browser reports/screenshots for
-seven days. Fork pull requests do not receive the private-package credential and
-are skipped; run their checks locally before accepting changes.
+Node.js 24 and pinned official actions. Browser report uploads are off by default;
+set the optional `HOMEPAGE_UPLOAD_REPORTS` repository variable to `true` to save
+reports/screenshots for seven days. Fork pull requests do not receive the
+private-package credential and are skipped; run their checks locally before
+accepting changes.
 
 After checks pass on `main`, the image job builds and publishes to
-`forgejo.abdalkhani.com/abdalkhani-homelab/homepage`. Pushes to `main` and manual
+`ghcr.io/kian-abdalkhani/homepage`. Pushes to `main` and manual
 runs on `main` publish images; pull requests and manual runs on other branches
 only run the checks. Images include `linux/amd64` and `linux/arm64` variants,
 tagged `latest` and `sha-<full-commit-sha>`. The job summary records the image
@@ -141,31 +143,54 @@ Configure these repository Actions settings before enabling the first publish:
 
 | Setting | Type | Required access |
 | --- | --- | --- |
-| `FORGEJO_PACKAGES_TOKEN` | Secret | Read the private `abdalkhani-homelab` npm packages |
-| `FORGEJO_REGISTRY_TOKEN` | Secret | Push container images under `abdalkhani-homelab` |
-| `FORGEJO_USERNAME` | Variable | Forgejo account associated with the registry token |
+| `FORGEJO_PACKAGES_TOKEN` | Secret | `read:package` access to the private `abdalkhani-homelab` npm packages |
+| `HOMEPAGE_UPLOAD_REPORTS` | Optional variable | Set to `true` to enable browser artifact uploads; unset leaves them off |
 
-The registry account needs write access to the package owner. Package visibility
-follows the owner/organization's access settings; retain the intended private
-access on `abdalkhani-homelab`. Both the npm endpoint and container registry must
-be reachable from the GitHub-hosted runner. Missing settings fail with a clear
-setup message. See [Forgejo package access](https://forgejo.org/docs/latest/user/packages/#access-restrictions).
+Forgejo is used only to download the design-kit packages. Use a package-reading
+account/token and retain the packages' private access settings. No Forgejo image
+publishing token or username variable is required. The npm endpoint and `ghcr.io`
+must be reachable from the GitHub-hosted runner. A missing package-download
+secret fails with a clear setup message. See
+[Forgejo package access](https://forgejo.org/docs/latest/user/packages/#access-restrictions).
+
+GHCR publishing uses GitHub's automatically generated `GITHUB_TOKEN`. Only the
+publishing job receives `packages: write`; the checks job keeps `contents: read`.
+You do not create a GitHub publishing token or add `GITHUB_TOKEN` as a repository
+secret. New GHCR packages default to private, and the workflow does not change
+image visibility. Images published by this workflow are linked to this repository.
+If a package with the same name already exists, grant this repository Actions
+write access to it before publishing. See
+[GitHub Container Registry authentication](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry).
+
+For this public repository, the standard `ubuntu-24.04` runners are free. GHCR
+container image storage and bandwidth are currently free, including private
+images; GitHub says it will give at least one month's notice before changing that
+policy. Browser artifact uploads are opt-in because Actions artifact storage has
+a separate allowance and can incur charges above it. Docker build-record uploads
+and persistent Actions caches are disabled. Job logs and summaries remain
+available without artifact uploads. These settings avoid billable storage in the
+default workflow under the current pricing. Recheck pricing if changing the
+repository to private or using larger runners. See
+[GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+and [GitHub Packages billing](https://docs.github.com/en/billing/concepts/product-billing/github-packages).
 
 The image job creates an npm configuration in the runner's temporary directory,
 outside the Docker build context. This file contains only a `${FORGEJO_TOKEN}`
 placeholder; the package token is supplied separately as the `forgejo_token`
 BuildKit secret. Both are available only during `npm ci`, and the temporary file
-is removed after the job. The registry token is used only for publishing. The
+is removed after the job. The GitHub token is used for GHCR publishing. The
 tracked `.npmrc` remains scope routing only.
 
 ## Deploy the published image
 
 The default `docker-compose.yml` pulls the CI image. Wait for the first successful
-publish on `main` before switching an existing LXC to this configuration. For a
-private image, log in to Forgejo using an account/token with pull access:
+publish on `main` before switching an existing LXC to this configuration. For the
+default private GHCR image, create a GitHub personal access token (classic) with
+only `read:packages` on an account with access to the image. Enter that token at
+Docker's password prompt on the LXC:
 
 ```sh
-docker login forgejo.abdalkhani.com
+docker login ghcr.io --username Kian-Abdalkhani
 docker compose pull
 docker compose up -d
 ```
@@ -173,13 +198,15 @@ docker compose up -d
 Run these commands from the repository directory on the LXC after updating its
 checkout. The container name (`homepage`), port mapping (`8080:80`), and restart
 policy are preserved. Deployment requires Docker and registry pull access;
-it does not install npm dependencies or need an npm credentials file.
+it does not install npm dependencies or need an npm credentials file. The LXC
+does not need Forgejo credentials. A public GHCR image can be pulled without
+logging in; keep the default private visibility unless you intend to make it public.
 
 To pin a deployment or roll back, set `HOMEPAGE_IMAGE` in the LXC's environment
 or its ignored `.env` file to a previously published tag or digest:
 
 ```ini
-HOMEPAGE_IMAGE=forgejo.abdalkhani.com/abdalkhani-homelab/homepage@sha256:<published-digest>
+HOMEPAGE_IMAGE=ghcr.io/kian-abdalkhani/homepage@sha256:<published-digest>
 ```
 
 Use the complete digest from the CI job summary in place of the placeholder,

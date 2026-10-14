@@ -125,34 +125,120 @@ in `index.html` if the public hostname changes.
 
 `.github/workflows/checks.yml` runs lint, the production build, and the Chromium/
 WebKit suite on pushes to `main` and pull requests from this repository. It uses
-Node.js 24, pinned official actions, and saves browser reports/screenshots for
-seven days. Fork pull requests do not receive the private-package credential and
-are skipped; run their checks locally before accepting changes.
+Node.js 24 and pinned official actions. Browser report uploads are off by default;
+set the optional `HOMEPAGE_UPLOAD_REPORTS` repository variable to `true` to save
+reports/screenshots for seven days. Fork pull requests do not receive the
+private-package credential and are skipped; run their checks locally before
+accepting changes.
 
-Add a repository Actions secret named `FORGEJO_PACKAGES_TOKEN`, containing a
-Forgejo token with read access to the `abdalkhani-homelab` packages. The token is
-available only to the dependency-install step. Without this secret, the workflow
-fails with a clear setup message. It checks the page but does not deploy it.
+After checks pass on `main`, the image job builds and publishes to
+`ghcr.io/kian-abdalkhani/homepage`. Pushes to `main` and manual
+runs on `main` publish images; pull requests and manual runs on other branches
+only run the checks. Images include `linux/amd64` and `linux/arm64` variants,
+tagged `latest` and `sha-<full-commit-sha>`. The job summary records the image
+digest for reproducible deployment and rollback. Publishing an image does not
+restart or change the LXC.
 
-## Docker
+Configure these repository Actions settings before enabling the first publish:
 
-Compose supplies your user-level `~/.npmrc` as a BuildKit secret only during
-dependency installation. It should contain a resolved authentication token for
-this file-based Compose build. The runtime image contains the static build and
-Nginx configuration; it needs no Forgejo access.
+| Setting | Type | Required access |
+| --- | --- | --- |
+| `FORGEJO_PACKAGES_TOKEN` | Secret | `read:package` access to the private `abdalkhani-homelab` npm packages |
+| `HOMEPAGE_UPLOAD_REPORTS` | Optional variable | Set to `true` to enable browser artifact uploads; unset leaves them off |
+
+Forgejo is used only to download the design-kit packages. Use a package-reading
+account/token and retain the packages' private access settings. No Forgejo image
+publishing token or username variable is required. The npm endpoint and `ghcr.io`
+must be reachable from the GitHub-hosted runner. A missing package-download
+secret fails with a clear setup message. See
+[Forgejo package access](https://forgejo.org/docs/latest/user/packages/#access-restrictions).
+
+GHCR publishing uses GitHub's automatically generated `GITHUB_TOKEN`. Only the
+publishing job receives `packages: write`; the checks job keeps `contents: read`.
+You do not create a GitHub publishing token or add `GITHUB_TOKEN` as a repository
+secret. New GHCR packages default to private, and the workflow does not change
+image visibility. Images published by this workflow are linked to this repository.
+If a package with the same name already exists, grant this repository Actions
+write access to it before publishing. See
+[GitHub Container Registry authentication](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry).
+
+For this public repository, the standard `ubuntu-24.04` runners are free. GHCR
+container image storage and bandwidth are currently free, including private
+images; GitHub says it will give at least one month's notice before changing that
+policy. Browser artifact uploads are opt-in because Actions artifact storage has
+a separate allowance and can incur charges above it. Docker build-record uploads
+and persistent Actions caches are disabled. Job logs and summaries remain
+available without artifact uploads. These settings avoid billable storage in the
+default workflow under the current pricing. Recheck pricing if changing the
+repository to private or using larger runners. See
+[GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+and [GitHub Packages billing](https://docs.github.com/en/billing/concepts/product-billing/github-packages).
+
+The image job creates an npm configuration in the runner's temporary directory,
+outside the Docker build context. This file contains only a `${FORGEJO_TOKEN}`
+placeholder; the package token is supplied separately as the `forgejo_token`
+BuildKit secret. Both are available only during `npm ci`, and the temporary file
+is removed after the job. The GitHub token is used for GHCR publishing. The
+tracked `.npmrc` remains scope routing only.
+
+## Deploy the published image
+
+The default `docker-compose.yml` pulls the CI image. Wait for the first successful
+publish on `main` before switching an existing LXC to this configuration. For the
+default private GHCR image, create a GitHub personal access token (classic) with
+only `read:packages` on an account with access to the image. Enter that token at
+Docker's password prompt on the LXC:
 
 ```sh
-docker compose build --print | docker buildx bake --file - \
-  --allow="fs.read=${HOMEPAGE_NPMRC:-$HOME/.npmrc}" --load
+docker login ghcr.io --username Kian-Abdalkhani
+docker compose pull
 docker compose up -d
 ```
 
-The existing container name, port mapping (`8080:80`), and restart policy remain
-the same. To select a different credentials file outside the repository:
+Run these commands from the repository directory on the LXC after updating its
+checkout. The container name (`homepage`), port mapping (`8080:80`), and restart
+policy are preserved. Deployment requires Docker and registry pull access;
+it does not install npm dependencies or need an npm credentials file. The LXC
+does not need Forgejo credentials. A public GHCR image can be pulled without
+logging in; keep the default private visibility unless you intend to make it public.
+
+To pin a deployment or roll back, set `HOMEPAGE_IMAGE` in the LXC's environment
+or its ignored `.env` file to a previously published tag or digest:
+
+```ini
+HOMEPAGE_IMAGE=ghcr.io/kian-abdalkhani/homepage@sha256:<published-digest>
+```
+
+Use the complete digest from the CI job summary in place of the placeholder,
+then run `docker compose pull` and `docker compose up -d`. Record the current
+digest before upgrading if you want an explicit rollback target.
+
+## Build an image locally
+
+`docker-compose.build.yml` is a separate, standalone configuration for local
+builds. Use it instead of the deployment Compose file. It tags the result as
+`abdalkhani-homepage:local`, preserving access to a local build without replacing
+the published image tag.
+
+This build supplies your user-level `~/.npmrc` as a BuildKit secret during
+dependency installation. For this file-based Compose build, that config should
+contain a resolved authentication token. The runtime image contains only the
+compiled site and Nginx configuration. Node runs on the builder's native platform;
+the final Nginx image uses the requested deployment platform.
+
+```sh
+docker compose -f docker-compose.build.yml build --print | \
+  docker buildx bake --file - \
+  --allow="fs.read=${HOMEPAGE_NPMRC:-$HOME/.npmrc}" --load
+docker compose -f docker-compose.build.yml up -d
+```
+
+To select a different credentials file outside the repository:
 
 ```sh
 export HOMEPAGE_NPMRC=/absolute/path/to/npm-config
-docker compose build --print | docker buildx bake --file - \
+docker compose -f docker-compose.build.yml build --print | \
+  docker buildx bake --file - \
   --allow="fs.read=$HOMEPAGE_NPMRC" --load
 ```
 
@@ -167,8 +253,8 @@ docker build \
 ```
 
 The Bake command grants access to that exact external npm config file. On Compose
-versions without Bake's filesystem entitlement check, `docker compose build`
-also works.
+versions without Bake's filesystem entitlement check,
+`docker compose -f docker-compose.build.yml build` also works.
 
 The project `.npmrc` contains scope routing only. Keep credential-bearing configs
 outside the build context. Use secret mounts rather than Docker build arguments

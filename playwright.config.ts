@@ -6,7 +6,8 @@ export default defineConfig({
   testDir: "./tests/browser",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  workers: 2,
+  workers: process.env.CI ? 1 : 2,
+  globalTimeout: process.env.CI ? 10 * 60 * 1000 : undefined,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: externalUrl || "http://127.0.0.1:4174",

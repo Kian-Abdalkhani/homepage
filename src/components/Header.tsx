@@ -1,11 +1,13 @@
 import { IconButton, Stack } from "@abdalkhani/react-ui";
 import markUrl from "@abdalkhani/homelab-theme/logos/winged-horse-compact.svg?url";
-import { useAppearance } from "../hooks/useAppearance";
 import "./Header.css";
 
-export function Header() {
-  const { appearance, toggleAppearance } = useAppearance();
+type HeaderProps = {
+  appearance: "light" | "dark";
+  toggleAppearance: () => void;
+};
 
+export function Header({ appearance, toggleAppearance }: HeaderProps) {
   return (
     <header className="homepage-header">
       <Stack className="header-content" direction="row" align="center" justify="space-between" wrap>

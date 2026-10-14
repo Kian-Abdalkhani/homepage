@@ -10,6 +10,7 @@ function currentAppearance(): Appearance {
 
 export function useAppearance() {
   const [appearance, setAppearance] = useState<Appearance>(currentAppearance);
+  const [followsSystem, setFollowsSystem] = useState(() => document.documentElement.dataset.theme === "system");
 
   useEffect(() => {
     const system = matchMedia("(prefers-color-scheme: dark)");
@@ -26,6 +27,7 @@ export function useAppearance() {
     const next = appearance === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     setAppearance(next);
+    setFollowsSystem(false);
     try {
       localStorage.setItem("ak-appearance", next);
     } catch {
@@ -33,5 +35,16 @@ export function useAppearance() {
     }
   }
 
-  return { appearance, toggleAppearance };
+  function resetAppearance() {
+    document.documentElement.dataset.theme = "system";
+    setFollowsSystem(true);
+    setAppearance(currentAppearance());
+    try {
+      localStorage.removeItem("ak-appearance");
+    } catch {
+      // Following the system also works without browser storage.
+    }
+  }
+
+  return { appearance, followsSystem, toggleAppearance, resetAppearance };
 }

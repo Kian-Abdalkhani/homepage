@@ -1,0 +1,58 @@
+name: Homepage checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homepage-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, build, and browser checks
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+          registry-url: https://forgejo.abdalkhani.com/api/packages/abdalkhani-homelab/npm/
+          scope: '@abdalkhani'
+      - name: Install dependencies
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.FORGEJO_PACKAGES_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::Add the FORGEJO_PACKAGES_TOKEN repository secret with read access to the Abdalkhani design-kit packages."
+            exit 1
+          fi
+          npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Install browser dependencies
+        run: npx playwright install --with-deps chromium webkit
+      - name: Build and test
+        run: npm run test:browser
+      - name: Save browser reports and screenshots
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: homepage-browser-results
+          path: |
+            playwright-report/
+            test-results/
+            artifacts/homepage-*.png
+          if-no-files-found: ignore
+          retention-days: 7

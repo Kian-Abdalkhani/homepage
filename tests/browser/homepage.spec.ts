@@ -8,21 +8,22 @@ import original from "../fixtures/original-homepage.json" with { type: "json" };
 
 async function renderedContent(page: Page) {
   return page.evaluate(() => ({
-    title: document.title,
-    text: `${document.querySelector("header h1")!.textContent} ${document.querySelector<HTMLElement>("main")!.innerText}`.replace(/\s+/g, " ").trim(),
-    paragraphs: [...document.querySelectorAll<HTMLElement>("main p")].map((p) => p.innerText.replace(/\s+/g, " ").trim()),
-    links: [...document.querySelectorAll("a")].map((a) => ({ text: a.innerText, href: a.getAttribute("href"), target: a.getAttribute("target") })),
+    paragraphs: [...document.querySelectorAll<HTMLElement>(".about p")].map((p) => p.innerText.replace(/\s+/g, " ").trim()),
+    links: [...document.querySelectorAll("a")].map((a) => ({
+      text: a.hasAttribute("aria-labelledby") ? document.getElementById(a.getAttribute("aria-labelledby")!)!.textContent : a.innerText,
+      href: a.getAttribute("href"),
+      target: a.getAttribute("target"),
+    })).sort((a, b) => a.href!.localeCompare(b.href!)),
   }));
 }
 
-test("preserves the original homepage copy, emphasis, links, and title", async ({ page }) => {
+test("preserves the original About copy, emphasis, headings, and link destinations", async ({ page }) => {
   await page.goto("/");
   expect(await renderedContent(page)).toEqual({
-    title: original.title,
-    text: original.text,
     paragraphs: original.paragraphs,
-    links: original.links,
+    links: [...original.links].sort((a, b) => a.href.localeCompare(b.href)),
   });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(original.title);
   await expect(page.locator("main strong")).toHaveText("Abdalkhani");
   await expect(page.locator("main em")).toHaveText(original.paragraphs[2]);
   await expect(page.locator(".header-watermark")).toHaveText("ABDALKHANI");
@@ -73,18 +74,20 @@ test("both themes reflow across desktop, tablet, and mobile widths", async ({ pa
     await page.emulateMedia({ colorScheme });
     for (const width of [1280, 769, 768, 480, 320]) {
       await page.setViewportSize({ width, height: 800 });
-      expect((await renderedContent(page)).text).toBe(original.text);
+      expect((await renderedContent(page)).paragraphs).toEqual(original.paragraphs);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       const about = await page.getByRole("region", { name: "About Us", exact: true }).boundingBox();
       const apps = await page.getByRole("region", { name: "List of apps within the domain:", exact: true }).boundingBox();
       expect(about).not.toBeNull();
       expect(apps).not.toBeNull();
-      if (width > 768) {
-        expect(apps!.y).toBe(about!.y);
-        expect(apps!.x).toBeGreaterThanOrEqual(about!.x + about!.width);
-      } else {
-        expect(apps!.y).toBeGreaterThanOrEqual(about!.y + about!.height);
-      }
+      expect(about!.y).toBeGreaterThanOrEqual(apps!.y + apps!.height);
+      expect(apps!.x).toBe(about!.x);
+      expect(apps!.width).toBe(about!.width);
+      const calculator = page.getByRole("link", { name: "Investment Calculator", exact: true });
+      await expect(calculator).toBeVisible();
+      await expect(calculator).toHaveAccessibleDescription("Estimate how an investment could grow over time.");
+      await expect(calculator.locator(".app-icon")).toBeVisible();
+      expect((await calculator.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       await expect(page.locator(".header-logo")).toBeVisible();
       await expect(page.locator(".header-watermark")).toBeVisible();
       const toggle = page.getByRole("switch", { name: "Dark mode", exact: true });
@@ -122,7 +125,7 @@ test("theme toggle and original links work with visible keyboard focus in both t
     await page.keyboard.press("Space");
     await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
     await expect(toggle).toHaveAttribute("aria-checked", String(colorScheme === "dark"));
-    for (const link of original.links) {
+    for (const link of [...original.links].reverse()) {
       await page.keyboard.press(tab);
       const anchor = page.getByRole("link", { name: link.text, exact: true });
       await expect(anchor).toBeFocused();
@@ -133,6 +136,8 @@ test("theme toggle and original links work with visible keyboard focus in both t
       expect(outline.style).toBe("solid");
       expect(outline.width).toBeGreaterThanOrEqual(2);
     }
+    await page.keyboard.press(tab);
+    await expect(page.getByRole("button", { name: "Follow system", exact: true })).toBeFocused();
   }
 });
 
@@ -243,4 +248,68 @@ test("an invalid saved appearance falls back to the system preference", async ({
   await page.getByRole("switch", { name: "Dark mode", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   expect(await page.evaluate(() => localStorage.getItem("ak-appearance"))).toBe("light");
+});
+
+test("app discovery leads the document and the whole app card is a described link", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("main [role=region]").first()).toHaveAccessibleName("List of apps within the domain:");
+  const calculator = page.getByRole("link", { name: "Investment Calculator", exact: true });
+  await expect(calculator).toHaveAccessibleDescription("Estimate how an investment could grow over time.");
+  await expect(calculator).toHaveAttribute("href", original.links[1].href);
+  await expect(calculator.locator("svg")).toHaveCount(2);
+  await expect(calculator.locator("svg").first()).toHaveAttribute("aria-hidden", "true");
+});
+
+test("search and sharing metadata includes a real branded PNG", async ({ page, request, baseURL }) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle("Abdalkhani | Public apps");
+  const description = "Find public apps on the Abdalkhani domain, including the Investment Calculator.";
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", description);
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", description);
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Abdalkhani | Public apps");
+  await expect(page.locator('meta[property="og:type"]')).toHaveAttribute("content", "website");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://www.abdalkhani.com/");
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute("content", "https://www.abdalkhani.com/");
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+  const image = await page.locator('meta[property="og:image"]').getAttribute("content");
+  expect(new URL(image!).origin).toBe("https://www.abdalkhani.com");
+  const response = await request.get(new URL(image!, baseURL).pathname);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toContain("image/png");
+  const png = await response.body();
+  expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+  expect(png.readUInt32BE(16)).toBe(1200);
+  expect(png.readUInt32BE(20)).toBe(630);
+});
+
+test("Follow system clears the saved choice and resumes OS changes after reload", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  const reset = page.getByRole("button", { name: "Follow system", exact: true });
+  await expect(reset).toBeDisabled();
+  await page.getByRole("switch", { name: "Dark mode", exact: true }).click();
+  await expect(reset).toBeEnabled();
+  await reset.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "system");
+  expect(await page.evaluate(() => localStorage.getItem("ak-appearance"))).toBeNull();
+  await expect(reset).toBeDisabled();
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.getByRole("switch", { name: "Dark mode", exact: true })).toHaveAttribute("aria-checked", "true");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "system");
+  await expect(page.getByRole("switch", { name: "Dark mode", exact: true })).toHaveAttribute("aria-checked", "true");
+});
+
+test("Follow system works when browser storage is blocked", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", { get() { throw new Error("Storage blocked"); } });
+  });
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await page.getByRole("switch", { name: "Dark mode", exact: true }).click();
+  await page.getByRole("button", { name: "Follow system", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "system");
+  await expect(page.getByRole("switch", { name: "Dark mode", exact: true })).toHaveAttribute("aria-checked", "false");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.getByRole("switch", { name: "Dark mode", exact: true })).toHaveAttribute("aria-checked", "true");
 });
